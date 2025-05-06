@@ -51,9 +51,12 @@ def clean_and_engineer(df):
 def select_features(df):
     features = [
         "Income", "Age", "Recency", "TotalSpend",
-        "CustomerTenure", "AcceptedTotal"
+        "CustomerTenure", "AcceptedTotal",
+        "AcceptedCmp1", "AcceptedCmp2", "AcceptedCmp3",
+        "AcceptedCmp4", "AcceptedCmp5"
     ]
     return df[features + ["Response"]].dropna()
+
 
 
 def preprocess_all(path="data/marketing_data.csv"):
