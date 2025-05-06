@@ -86,18 +86,22 @@ with tabs[1]:
     st.dataframe(segment_stats.reset_index())
 
 # --- Tab 2: Campaign Performance ---
+from prep_utils import load_raw_data
+
+...
+
 with tabs[2]:
     st.subheader("Campaign Response Rates")
 
-    # Check which campaign columns exist
-    campaign_cols = [col for col in data.columns if col.startswith("AcceptedCmp")]
-    st.write("Detected Campaign Columns:", campaign_cols)  # <-- add this for debug
+    raw_df = load_raw_data("marketing_data.csv")  # Use raw version here
+    campaign_cols = [col for col in raw_df.columns if col.startswith("AcceptedCmp")]
+    st.write("Detected Campaign Columns:", campaign_cols)
 
     if campaign_cols:
-        campaign_summary = data[campaign_cols + ["Response"]].mean().round(3) * 100
+        campaign_summary = raw_df[campaign_cols + ["Response"]].mean().round(3) * 100
         st.bar_chart(campaign_summary)
     else:
-        st.warning("No campaign columns found (e.g., AcceptedCmp1–5). Check preprocessing or raw data.")
+        st.warning("No campaign columns found.")
 
 
     
