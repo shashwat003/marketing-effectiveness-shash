@@ -41,7 +41,7 @@ data = load_data()
 segmented_data = segment_customers(data.copy(), n_clusters=n_clusters)
 
 # Tabs for app sections
-tabs = st.tabs(["🔍 Data Overview", "Segmentation", "Campaign Performance", "A/B Testing", "Causal Inference","📈 Modeling"])
+tabs = st.tabs(["🔍 Data Overview", "Segmentation", "Campaign Performance", "A/B Testing", "Causal Inference","📈 Modeling","Market Mix Modeling"])
 
 # --- Tab 0: Data Overview ---
 with tabs[0]:
@@ -169,4 +169,35 @@ with tabs[5]:
 
         st.subheader("Confusion Matrix")
         st.write(metrics["confusion_matrix"])
+
+# --- Tab 6: Market Mix Modeling ---
+with tabs[6]:
+    st.subheader("📉 Market Mix Modeling (OLS Regression)")
+    st.markdown("Estimate the impact of marketing spend, income, and recency on campaign response using linear regression.")
+
+    import statsmodels.api as sm
+
+    mmm_df = data.copy()
+    mmm_df = mmm_df.dropna(subset=["Income", "Recency", "Response"])
+
+    mmm_df["TotalMarketing"] = mmm_df[[
+        "MntWines", "MntFruits", "MntMeatProducts",
+        "MntFishProducts", "MntSweetProducts", "MntGoldProds"
+    ]].sum(axis=1)
+
+    X = sm.add_constant(mmm_df[["Income", "Recency", "TotalMarketing"]])
+    y = mmm_df["Response"]
+
+    model = sm.OLS(y, X).fit()
+    
+    st.write("### Coefficient Summary:")
+    st.dataframe(model.params.reset_index().rename(columns={"index": "Feature", 0: "Coefficient"}))
+
+    st.write("### Model Diagnostics")
+    st.markdown(f"- **Adjusted R²**: `{model.rsquared_adj:.4f}`")
+    st.markdown("Lower but expected — behavioral outcomes are hard to predict with only 3 variables.")
+
+    with st.expander("Show full regression summary"):
+        st.text(model.summary())
+
 
