@@ -8,20 +8,25 @@ from scipy import stats
 from sklearn.linear_model import LogisticRegression
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import classification_report
-import random
 
 # Load and preprocess data
 @st.cache_data
-
 def load_data():
     df = pd.read_csv("marketing_data.csv")
+
+    # 🔧 Fix: Remove whitespace from column names
+    df.columns = df.columns.str.strip()
+
     df["Income"] = df["Income"].replace("\$", "", regex=True).replace(",", "", regex=True).astype(float)
     df["Dt_Customer"] = pd.to_datetime(df["Dt_Customer"], format="%m/%d/%y")
     df["Age"] = 2024 - df["Year_Birth"]
-    df["TotalSpend"] = df[["MntWines", "MntFruits", "MntMeatProducts", "MntFishProducts", "MntSweetProducts", "MntGoldProds"]].sum(axis=1)
+    df["TotalSpend"] = df[[
+        "MntWines", "MntFruits", "MntMeatProducts",
+        "MntFishProducts", "MntSweetProducts", "MntGoldProds"
+    ]].sum(axis=1)
     return df
 
-# Perform KMeans clustering
+# KMeans Clustering
 def segment_customers(df, n_clusters=4):
     features = df[["Income", "Age", "Recency", "TotalSpend"]].dropna()
     scaler = StandardScaler()
@@ -31,19 +36,19 @@ def segment_customers(df, n_clusters=4):
     features["Segment"] = labels
     return df.join(features["Segment"])
 
-# Streamlit page setup
+# Streamlit UI Setup
 st.set_page_config(page_title="Marketing Effectiveness App", layout="wide")
 st.title("📊 Marketing Effectiveness App")
 
-# Sidebar settings
+# Sidebar Controls
 st.sidebar.header("Segmentation Controls")
 n_clusters = st.sidebar.slider("Number of Clusters", 2, 10, 4)
 
-# Load and segment data
+# Load and process data
 data = load_data()
 segmented_data = segment_customers(data.copy(), n_clusters=n_clusters)
 
-# Tabs
+# Tabs for app sections
 tabs = st.tabs(["Segmentation", "Campaign Performance", "A/B Testing", "Causal Inference"])
 
 # --- Tab 1: Segmentation ---
@@ -93,15 +98,14 @@ with tabs[2]:
     st.metric("Lift", f"{lift:.2f}%")
     st.metric("P-Value", f"{p_val:.4f}")
 
-    st.write("""
+    st.write(\"\"\"
     - A low p-value (< 0.05) suggests a statistically significant difference between A and B.
     - This is a simulation using the 'Response' field.
-    """)
+    \"\"\")
 
 # --- Tab 4: Causal Inference ---
 with tabs[3]:
     st.subheader("Causal Inference: Propensity Score Matching")
-
     st.write("This module estimates the effect of being in a high-income group on campaign response.")
 
     df = data.copy()
