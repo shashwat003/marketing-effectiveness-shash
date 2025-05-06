@@ -173,34 +173,52 @@ with tabs[5]:
 # --- Tab 6: Market Mix Modeling ---
 
 with tabs[6]:
-    st.subheader("📉 Market Mix Modeling (Linear Regression)")
+    st.subheader("📉 Market Mix Modeling (OLS Regression)")
+    st.markdown("Estimate the impact of marketing spend, income, and recency on campaign response using linear regression.")
 
-    from sklearn.linear_model import LinearRegression
-    from sklearn.metrics import r2_score
+    import statsmodels.api as sm
 
     mmm_df = data.copy()
-    mmm_df = mmm_df.dropna(subset=["Income", "Recency", "Response"])
+    mmm_df.columns = mmm_df.columns.str.strip()  # Strip any leading/trailing whitespace
 
-    mmm_df["TotalMarketing"] = mmm_df[[
+    # Check for required columns before proceeding
+    required_cols = [
+        "Income", "Recency", "Response",
         "MntWines", "MntFruits", "MntMeatProducts",
         "MntFishProducts", "MntSweetProducts", "MntGoldProds"
-    ]].sum(axis=1)
+    ]
 
-    X = mmm_df[["Income", "Recency", "TotalMarketing"]]
-    y = mmm_df["Response"]
+    missing = [col for col in required_cols if col not in mmm_df.columns]
+    if missing:
+        st.error(f"Missing columns for regression: {', '.join(missing)}")
+    else:
+        # Drop rows with NaNs in key fields
+        mmm_df = mmm_df.dropna(subset=["Income", "Recency", "Response"])
 
-    model = LinearRegression()
-    model.fit(X, y)
-    y_pred = model.predict(X)
+        # Create total marketing spend feature
+        mmm_df["TotalMarketing"] = mmm_df[[
+            "MntWines", "MntFruits", "MntMeatProducts",
+            "MntFishProducts", "MntSweetProducts", "MntGoldProds"
+        ]].sum(axis=1)
 
-    st.write("### Coefficient Summary:")
-    coef_df = pd.DataFrame({
-        "Feature": X.columns,
-        "Coefficient": model.coef_
-    })
-    st.dataframe(coef_df)
+        # Prepare data for regression
+        X = sm.add_constant(mmm_df[["Income", "Recency", "TotalMarketing"]])
+        y = mmm_df["Response"]
 
-    st.write("### Model Diagnostics")
-    st.markdown(f"- **R² Score**: `{r2_score(y, y_pred):.4f}`")
+        # Fit OLS model
+        model = sm.OLS(y, X).fit()
+
+        # Show results
+        st.write("### Coefficient Summary:")
+        coef_df = model.params.reset_index()
+        coef_df.columns = ["Feature", "Coefficient"]
+        st.dataframe(coef_df)
+
+        st.write("### Model Diagnostics")
+        st.markdown(f"- **Adjusted R²**: `{model.rsquared_adj:.4f}`")
+        st.markdown("Lower R² is expected — behavioral responses are complex and depend on more factors than modeled here.")
+
+        with st.expander("Show full regression summary"):
+            st.text(model.summary())
 
 
