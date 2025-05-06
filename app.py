@@ -98,10 +98,11 @@ with tabs[2]:
     st.metric("Lift", f"{lift:.2f}%")
     st.metric("P-Value", f"{p_val:.4f}")
 
-    st.write(\"\"\"
+    st.write("""
     - A low p-value (< 0.05) suggests a statistically significant difference between A and B.
     - This is a simulation using the 'Response' field.
-    \"\"\")
+    """)
+
 
 # --- Tab 4: Causal Inference ---
 with tabs[3]:
