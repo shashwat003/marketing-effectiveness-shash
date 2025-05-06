@@ -171,11 +171,12 @@ with tabs[5]:
         st.write(metrics["confusion_matrix"])
 
 # --- Tab 6: Market Mix Modeling ---
-with tabs[6]:
-    st.subheader("📉 Market Mix Modeling (OLS Regression)")
-    st.markdown("Estimate the impact of marketing spend, income, and recency on campaign response using linear regression.")
 
-    import statsmodels.api as sm
+with tabs[6]:
+    st.subheader("📉 Market Mix Modeling (Linear Regression)")
+
+    from sklearn.linear_model import LinearRegression
+    from sklearn.metrics import r2_score
 
     mmm_df = data.copy()
     mmm_df = mmm_df.dropna(subset=["Income", "Recency", "Response"])
@@ -185,19 +186,21 @@ with tabs[6]:
         "MntFishProducts", "MntSweetProducts", "MntGoldProds"
     ]].sum(axis=1)
 
-    X = sm.add_constant(mmm_df[["Income", "Recency", "TotalMarketing"]])
+    X = mmm_df[["Income", "Recency", "TotalMarketing"]]
     y = mmm_df["Response"]
 
-    model = sm.OLS(y, X).fit()
-    
+    model = LinearRegression()
+    model.fit(X, y)
+    y_pred = model.predict(X)
+
     st.write("### Coefficient Summary:")
-    st.dataframe(model.params.reset_index().rename(columns={"index": "Feature", 0: "Coefficient"}))
+    coef_df = pd.DataFrame({
+        "Feature": X.columns,
+        "Coefficient": model.coef_
+    })
+    st.dataframe(coef_df)
 
     st.write("### Model Diagnostics")
-    st.markdown(f"- **Adjusted R²**: `{model.rsquared_adj:.4f}`")
-    st.markdown("Lower but expected — behavioral outcomes are hard to predict with only 3 variables.")
-
-    with st.expander("Show full regression summary"):
-        st.text(model.summary())
+    st.markdown(f"- **R² Score**: `{r2_score(y, y_pred):.4f}`")
 
 
