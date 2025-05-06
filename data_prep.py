@@ -11,7 +11,7 @@ except ImportError:
     ProfileReport = None
 
 
-def load_raw_data(path="data/marketing_data.csv"):
+def load_raw_data(path="marketing_data.csv"):
     df = pd.read_csv(path)
     df.columns = df.columns.str.strip()
     return df
