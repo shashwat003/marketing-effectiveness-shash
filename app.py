@@ -171,54 +171,45 @@ with tabs[5]:
         st.write(metrics["confusion_matrix"])
 
 # --- Tab 6: Market Mix Modeling ---
-
 with tabs[6]:
     st.subheader("📉 Market Mix Modeling (OLS Regression)")
     st.markdown("Estimate the impact of marketing spend, income, and recency on campaign response using linear regression.")
 
     import statsmodels.api as sm
 
-    mmm_df = data.copy()
-    mmm_df.columns = mmm_df.columns.str.strip()  # Strip any leading/trailing whitespace
+    # Load raw data (not preprocessed one)
+    mmm_df = pd.read_csv("marketing_data.csv")
+    mmm_df.columns = mmm_df.columns.str.strip()
 
-    # Check for required columns before proceeding
-    required_cols = [
-        "Income", "Recency", "Response",
+    # Clean required fields
+    mmm_df["Income"] = mmm_df["Income"].replace("[\$,]", "", regex=True).astype(float)
+    mmm_df = mmm_df.dropna(subset=["Income", "Recency", "Response"])
+
+    # Create TotalMarketing feature
+    marketing_cols = [
         "MntWines", "MntFruits", "MntMeatProducts",
         "MntFishProducts", "MntSweetProducts", "MntGoldProds"
     ]
 
-    missing = [col for col in required_cols if col not in mmm_df.columns]
-    if missing:
-        st.error(f"Missing columns for regression: {', '.join(missing)}")
+    if not all(col in mmm_df.columns for col in marketing_cols):
+        st.error("❌ Missing marketing spend columns in the dataset.")
     else:
-        # Drop rows with NaNs in key fields
-        mmm_df = mmm_df.dropna(subset=["Income", "Recency", "Response"])
+        mmm_df["TotalMarketing"] = mmm_df[marketing_cols].sum(axis=1)
 
-        # Create total marketing spend feature
-        mmm_df["TotalMarketing"] = mmm_df[[
-            "MntWines", "MntFruits", "MntMeatProducts",
-            "MntFishProducts", "MntSweetProducts", "MntGoldProds"
-        ]].sum(axis=1)
-
-        # Prepare data for regression
         X = sm.add_constant(mmm_df[["Income", "Recency", "TotalMarketing"]])
         y = mmm_df["Response"]
 
-        # Fit OLS model
         model = sm.OLS(y, X).fit()
 
-        # Show results
         st.write("### Coefficient Summary:")
-        coef_df = model.params.reset_index()
-        coef_df.columns = ["Feature", "Coefficient"]
-        st.dataframe(coef_df)
+        st.dataframe(model.params.reset_index().rename(columns={"index": "Feature", 0: "Coefficient"}))
 
         st.write("### Model Diagnostics")
         st.markdown(f"- **Adjusted R²**: `{model.rsquared_adj:.4f}`")
-        st.markdown("Lower R² is expected — behavioral responses are complex and depend on more factors than modeled here.")
+        st.markdown("📉 A modest R² is expected — campaign response is influenced by many behavioral factors.")
 
         with st.expander("Show full regression summary"):
             st.text(model.summary())
+
 
 
