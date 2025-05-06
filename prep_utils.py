@@ -1,4 +1,4 @@
-# import pandas as pd
+import pandas as pd
 import numpy as np
 from sklearn.preprocessing import OneHotEncoder
 from sklearn.impute import SimpleImputer
