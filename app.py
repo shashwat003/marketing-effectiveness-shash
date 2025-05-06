@@ -9,6 +9,8 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import classification_report
 from prep_utils import preprocess_all, generate_profile_report
+from ab_testing import simulate_ab_test
+from modeling import train_model
 
 
 # Load and preprocess data
@@ -39,7 +41,7 @@ data = load_data()
 segmented_data = segment_customers(data.copy(), n_clusters=n_clusters)
 
 # Tabs for app sections
-tabs = st.tabs(["🔍 Data Overview", "Segmentation", "Campaign Performance", "A/B Testing", "Causal Inference"])
+tabs = st.tabs(["🔍 Data Overview", "Segmentation", "Campaign Performance", "A/B Testing", "Causal Inference","📈 Modeling"])
 
 # --- Tab 0: Data Overview ---
 with tabs[0]:
@@ -92,31 +94,24 @@ with tabs[2]:
 
     
 
+
 # --- Tab 3: A/B Testing ---
 with tabs[3]:
     st.subheader("A/B Test Simulator")
-    size = st.slider("Sample Size per Group", 100, 1000, 300)
-    test_data = data.sample(n=size*2, random_state=42).copy()
-    test_data["Group"] = ["A"]*size + ["B"]*size
+    sample_size = st.slider("Sample Size per Group", 100, 1000, 300)
 
-    response_A = test_data[test_data["Group"] == "A"]["Response"]
-    response_B = test_data[test_data["Group"] == "B"]["Response"]
+    ab_result = simulate_ab_test(data, sample_size=sample_size)
 
-    conversion_A = response_A.mean()
-    conversion_B = response_B.mean()
-    lift = (conversion_B - conversion_A) / conversion_A * 100
-
-    z_stat, p_val = stats.ttest_ind(response_A, response_B)
-
-    st.metric("Conversion A", f"{conversion_A:.2%}")
-    st.metric("Conversion B", f"{conversion_B:.2%}")
-    st.metric("Lift", f"{lift:.2f}%")
-    st.metric("P-Value", f"{p_val:.4f}")
+    st.metric("Conversion A", f"{ab_result['conversion_A']:.2%}")
+    st.metric("Conversion B", f"{ab_result['conversion_B']:.2%}")
+    st.metric("Lift", f"{ab_result['lift']:.2f}%")
+    st.metric("P-Value", f"{ab_result['p_value']:.4f}")
 
     st.write("""
     - A low p-value (< 0.05) suggests a statistically significant difference between A and B.
     - This is a simulation using the 'Response' field.
     """)
+
 
 # --- Tab 4: Causal Inference ---
 with tabs[4]:
@@ -147,3 +142,31 @@ with tabs[4]:
     st.plotly_chart(fig, use_container_width=True)
 
     st.write("Average Treatment Effect on the Treated (ATT):", round(att.mean(), 4))
+
+# --- Tab 5: Modeling ---
+with tabs[5]:
+    st.subheader("Predictive Modeling")
+
+    st.markdown("Use classification models to predict **Response** from customer attributes.")
+
+    available_features = ["Age", "Income", "Recency", "TotalSpend", "CustomerTenure", "AcceptedTotal"]
+    selected_features = st.multiselect("Select Features", available_features, default=available_features[:4])
+
+    model_type = st.selectbox("Choose Model", ["logistic", "random_forest"])
+
+    if st.button("Train Model"):
+        model, metrics = train_model(data, selected_features, "Response", model_type=model_type)
+
+        st.success("✅ Model trained successfully!")
+
+        st.subheader("Model Performance")
+        st.metric("Accuracy", f"{metrics['accuracy']:.2%}")
+        if metrics["roc_auc"] is not None:
+            st.metric("ROC AUC", f"{metrics['roc_auc']:.2f}")
+
+        st.subheader("Classification Report")
+        st.dataframe(pd.DataFrame(metrics["report"]).T.style.format({"precision": "{:.2f}", "recall": "{:.2f}", "f1-score": "{:.2f}", "support": "{:.0f}"}))
+
+        st.subheader("Confusion Matrix")
+        st.write(metrics["confusion_matrix"])
+
