@@ -101,6 +101,7 @@ with tabs[2]:
     """)
 
 # --- Tab 4: Causal Inference ---
+# --- Tab 4: Causal Inference ---
 with tabs[3]:
     st.subheader("Causal Inference: Propensity Score Matching")
     st.write("This module estimates the effect of being in a high-income group on campaign response.")
@@ -125,11 +126,12 @@ with tabs[3]:
     df_sorted["PropensityBin"] = pd.cut(df_sorted["Propensity"], bins)
 
     att = df_sorted.groupby("PropensityBin").apply(
-        lambda x: x[x["HighIncome"]==1]["Response"].mean() - x[x["HighIncome"]==0]["Response"].mean()
+        lambda x: x[x["HighIncome"] == 1]["Response"].mean() - x[x["HighIncome"] == 0]["Response"].mean()
     ).dropna()
 
-    # ✅ FIXED: Flatten the Series to a DataFrame so Streamlit can chart it
     att_df = att.reset_index().rename(columns={0: "ATT"})
-    st.line_chart(data=att_df, x="PropensityBin", y="ATT")
+    fig = px.line(att_df, x="PropensityBin", y="ATT", title="ATT by Propensity Score Bin")
+    st.plotly_chart(fig, use_container_width=True)
 
     st.write("Average Treatment Effect on the Treated (ATT):", round(att.mean(), 4))
+
