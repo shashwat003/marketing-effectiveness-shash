@@ -90,9 +90,7 @@ with tabs[2]:
     campaign_summary = data[campaign_cols + ["Response"]].mean().round(3) * 100
     st.bar_chart(campaign_summary)
 
-    st.subheader("Response by Country")
-    response_by_country = data.groupby("Country")["Response"].mean().round(3) * 100
-    st.dataframe(response_by_country.reset_index().rename(columns={"Response": "% Response"}))
+    
 
 # --- Tab 3: A/B Testing ---
 with tabs[3]:
