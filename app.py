@@ -88,9 +88,17 @@ with tabs[1]:
 # --- Tab 2: Campaign Performance ---
 with tabs[2]:
     st.subheader("Campaign Response Rates")
+
+    # Check which campaign columns exist
     campaign_cols = [col for col in data.columns if col.startswith("AcceptedCmp")]
-    campaign_summary = data[campaign_cols + ["Response"]].mean().round(3) * 100
-    st.bar_chart(campaign_summary)
+    st.write("Detected Campaign Columns:", campaign_cols)  # <-- add this for debug
+
+    if campaign_cols:
+        campaign_summary = data[campaign_cols + ["Response"]].mean().round(3) * 100
+        st.bar_chart(campaign_summary)
+    else:
+        st.warning("No campaign columns found (e.g., AcceptedCmp1–5). Check preprocessing or raw data.")
+
 
     
 
