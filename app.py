@@ -13,10 +13,7 @@ from sklearn.metrics import classification_report
 @st.cache_data
 def load_data():
     df = pd.read_csv("marketing_data.csv")
-
-    # 🔧 Fix: Remove whitespace from column names
-    df.columns = df.columns.str.strip()
-
+    df.columns = df.columns.str.strip()  # Remove whitespace from column names
     df["Income"] = df["Income"].replace("\$", "", regex=True).replace(",", "", regex=True).astype(float)
     df["Dt_Customer"] = pd.to_datetime(df["Dt_Customer"], format="%m/%d/%y")
     df["Age"] = 2024 - df["Year_Birth"]
@@ -103,7 +100,6 @@ with tabs[2]:
     - This is a simulation using the 'Response' field.
     """)
 
-
 # --- Tab 4: Causal Inference ---
 with tabs[3]:
     st.subheader("Causal Inference: Propensity Score Matching")
@@ -132,5 +128,8 @@ with tabs[3]:
         lambda x: x[x["HighIncome"]==1]["Response"].mean() - x[x["HighIncome"]==0]["Response"].mean()
     ).dropna()
 
-    st.line_chart(att)
+    # ✅ FIXED: Flatten the Series to a DataFrame so Streamlit can chart it
+    att_df = att.reset_index().rename(columns={0: "ATT"})
+    st.line_chart(data=att_df, x="PropensityBin", y="ATT")
+
     st.write("Average Treatment Effect on the Treated (ATT):", round(att.mean(), 4))
