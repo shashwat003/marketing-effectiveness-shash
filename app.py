@@ -8,20 +8,12 @@ from scipy import stats
 from sklearn.linear_model import LogisticRegression
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import classification_report
+from data_prep import preprocess_all, generate_profile_report
 
 # Load and preprocess data
 @st.cache_data
 def load_data():
-    df = pd.read_csv("marketing_data.csv")
-    df.columns = df.columns.str.strip()  # Remove whitespace from column names
-    df["Income"] = df["Income"].replace("\$", "", regex=True).replace(",", "", regex=True).astype(float)
-    df["Dt_Customer"] = pd.to_datetime(df["Dt_Customer"], format="%m/%d/%y")
-    df["Age"] = 2024 - df["Year_Birth"]
-    df["TotalSpend"] = df[[
-        "MntWines", "MntFruits", "MntMeatProducts",
-        "MntFishProducts", "MntSweetProducts", "MntGoldProds"
-    ]].sum(axis=1)
-    return df
+    return preprocess_all("data/marketing_data.csv")
 
 # KMeans Clustering
 def segment_customers(df, n_clusters=4):
@@ -46,16 +38,43 @@ data = load_data()
 segmented_data = segment_customers(data.copy(), n_clusters=n_clusters)
 
 # Tabs for app sections
-tabs = st.tabs(["Segmentation", "Campaign Performance", "A/B Testing", "Causal Inference"])
+tabs = st.tabs(["🔍 Data Overview", "Segmentation", "Campaign Performance", "A/B Testing", "Causal Inference"])
+
+# --- Tab 0: Data Overview ---
+with tabs[0]:
+    st.subheader("Data Summary and Exploratory Analysis")
+    st.dataframe(data.head())
+
+    st.write("### Summary Statistics")
+    st.dataframe(data.describe().T)
+
+    st.write("### Distribution: Income")
+    st.plotly_chart(px.histogram(data, x="Income", nbins=30), use_container_width=True)
+
+    st.write("### Distribution: Total Spend")
+    st.plotly_chart(px.box(data, y="TotalSpend", points="all"), use_container_width=True)
+
+    st.write("### Correlation Heatmap")
+    st.plotly_chart(px.imshow(data.corr(), text_auto=True), use_container_width=True)
+
+    # Optional embedded profile report
+    try:
+        profile_path = generate_profile_report(data)
+        st.markdown("### 🧾 Auto Profile Report")
+        with open(profile_path, "r", encoding="utf-8") as f:
+            html = f.read()
+            st.components.v1.html(html, height=900, scrolling=True)
+    except:
+        st.info("Install `ydata-profiling` to enable full auto report.")
 
 # --- Tab 1: Segmentation ---
-with tabs[0]:
+with tabs[1]:
     st.subheader("Customer Segmentation Viewer")
     x_var = st.selectbox("Select X-axis", ["Income", "Age", "Recency", "TotalSpend"])
     y_var = st.selectbox("Select Y-axis", ["Age", "Income", "TotalSpend", "Recency"])
 
     fig = px.scatter(segmented_data, x=x_var, y=y_var, color=segmented_data["Segment"].astype(str),
-                     hover_data=["Marital_Status", "Education", "Country"],
+                     hover_data=["Age", "Income", "TotalSpend"],
                      title=f"Segments by {x_var} and {y_var}")
     st.plotly_chart(fig, use_container_width=True)
 
@@ -64,7 +83,7 @@ with tabs[0]:
     st.dataframe(segment_stats.reset_index())
 
 # --- Tab 2: Campaign Performance ---
-with tabs[1]:
+with tabs[2]:
     st.subheader("Campaign Response Rates")
     campaign_cols = [col for col in data.columns if col.startswith("AcceptedCmp")]
     campaign_summary = data[campaign_cols + ["Response"]].mean().round(3) * 100
@@ -75,7 +94,7 @@ with tabs[1]:
     st.dataframe(response_by_country.reset_index().rename(columns={"Response": "% Response"}))
 
 # --- Tab 3: A/B Testing ---
-with tabs[2]:
+with tabs[3]:
     st.subheader("A/B Test Simulator")
     size = st.slider("Sample Size per Group", 100, 1000, 300)
     test_data = data.sample(n=size*2, random_state=42).copy()
@@ -101,39 +120,31 @@ with tabs[2]:
     """)
 
 # --- Tab 4: Causal Inference ---
-# --- Tab 4: Causal Inference ---
-with tabs[3]:
+with tabs[4]:
     st.subheader("Causal Inference: Propensity Score Matching")
-    st.write("This module estimates the effect of being in a high-income group on campaign response.")
-
     df = data.copy()
     df = df.dropna(subset=["Income", "Age", "TotalSpend", "Response"])
     df["HighIncome"] = (df["Income"] > df["Income"].median()).astype(int)
 
     features = df[["Age", "TotalSpend"]]
     treatment = df["HighIncome"]
-    outcome = df["Response"]
 
     X_train, X_test, y_train, y_test = train_test_split(features, treatment, test_size=0.3, random_state=42)
     model = LogisticRegression()
     model.fit(X_train, y_train)
-    propensity_scores = model.predict_proba(features)[:, 1]
+    df["Propensity"] = model.predict_proba(features)[:, 1]
 
-    df["Propensity"] = propensity_scores
     df_sorted = df.sort_values(by="Propensity")
-
     bins = np.linspace(0, 1, 11)
     df_sorted["PropensityBin"] = pd.cut(df_sorted["Propensity"], bins)
 
     att = df_sorted.groupby("PropensityBin").apply(
-        lambda x: x[x["HighIncome"] == 1]["Response"].mean() - x[x["HighIncome"] == 0]["Response"].mean()
+        lambda x: x[x["HighIncome"]==1]["Response"].mean() - x[x["HighIncome"]==0]["Response"].mean()
     ).dropna()
 
     att_df = att.reset_index().rename(columns={0: "ATT"})
-    att_df["PropensityBin"] = att_df["PropensityBin"].astype(str)  # Convert intervals to strings
+    att_df["PropensityBin"] = att_df["PropensityBin"].astype(str)
     fig = px.line(att_df, x="PropensityBin", y="ATT", title="ATT by Propensity Score Bin")
     st.plotly_chart(fig, use_container_width=True)
 
-
     st.write("Average Treatment Effect on the Treated (ATT):", round(att.mean(), 4))
-
