@@ -13,7 +13,7 @@ from data_prep import preprocess_all, generate_profile_report
 # Load and preprocess data
 @st.cache_data
 def load_data():
-    return preprocess_all("data/marketing_data.csv")
+    return preprocess_all("marketing_data.csv")
 
 # KMeans Clustering
 def segment_customers(df, n_clusters=4):
