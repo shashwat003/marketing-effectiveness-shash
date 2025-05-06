@@ -8,7 +8,8 @@ from scipy import stats
 from sklearn.linear_model import LogisticRegression
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import classification_report
-from data_prep import preprocess_all, generate_profile_report
+from data_prep_module import preprocess_all, generate_profile_report
+
 
 # Load and preprocess data
 @st.cache_data
