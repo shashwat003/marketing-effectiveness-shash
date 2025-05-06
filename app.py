@@ -130,8 +130,10 @@ with tabs[3]:
     ).dropna()
 
     att_df = att.reset_index().rename(columns={0: "ATT"})
+    att_df["PropensityBin"] = att_df["PropensityBin"].astype(str)  # Convert intervals to strings
     fig = px.line(att_df, x="PropensityBin", y="ATT", title="ATT by Propensity Score Bin")
     st.plotly_chart(fig, use_container_width=True)
+
 
     st.write("Average Treatment Effect on the Treated (ATT):", round(att.mean(), 4))
 
